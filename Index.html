@@ -1,1 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>First-Person Open World Game</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/controls/PointerLockControls.js"></script>
+  <script>
+    // Set up the scene
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
 
+    // Set up the grass floor
+    const grassGeometry = new THREE.PlaneGeometry(500, 500);
+    const grassMaterial = new THREE.MeshBasicMaterial({ color: 0x7CFC00, side: THREE.DoubleSide });
+    const grass = new THREE.Mesh(grassGeometry, grassMaterial);
+    grass.rotation.x = - Math.PI / 2;  // Rotate to lay flat
+    scene.add(grass);
+
+    // Set up the first-person movement controls
+    const controls = new THREE.PointerLockControls(camera, document.body);
+    scene.add(controls.getObject());
+
+    // Event listener to lock pointer when clicked
+    document.body.addEventListener('click', function () {
+      controls.lock();
+    });
+
+    // Set up the basic lighting
+    const ambientLight = new THREE.AmbientLight(0x404040);  // Soft light
+    scene.add(ambientLight);
+
+    // Movement variables
+    const speed = 0.1;  // Movement speed
+    const velocity = new THREE.Vector3();  // For handling movement physics
+    const direction = new THREE.Vector3();  // Movement direction
+
+    // Keyboard controls
+    const keys = { forward: false, backward: false, left: false, right: false };
+
+    // Add event listeners for keydown and keyup (for desktop)
+    document.addEventListener('keydown', (event) => {
+      if (event.code === 'KeyW') keys.forward = true;
+      if (event.code === 'KeyS') keys.backward = true;
+      if (event.code === 'KeyA') keys.left = true;
+      if (event.code === 'KeyD') keys.right = true;
+    });
+
+    document.addEventListener('keyup', (event) => {
+      if (event.code === 'KeyW') keys.forward = false;
+      if (event.code === 'KeyS') keys.backward = false;
+      if (event.code === 'KeyA') keys.left = false;
+      if (event.code === 'KeyD') keys.right = false;
+    });
+
+    // Mobile controls: Swipe to look around, virtual joystick to move
+    let touchStart = null;
+    let touchStartPos = null;
+
+    // Mobile movement variables
+    let mobileMovement = { forward: false, backward: false, left: false, right: false };
+
+    // Touch events for looking around
+    document.body.addEventListener('touchstart', function(event) {
+      touchStart = event.touches[0];
+      touchStartPos = { x: touchStart.clientX, y: touchStart.clientY };
+    });
+
+    document.body.addEventListener('touchmove', function(event) {
+      if (touchStart) {
+        let touchMove = event.touches[0];
+        let deltaX = touchMove.clientX - touchStartPos.x;
+        let deltaY = touchMove.clientY - touchStartPos.y;
+        
+        // Adjust the camera's rotation based on swipe distance
+        camera.rotation.y -= deltaX * 0.002;  // Horizontal swipe for left/right
+        camera.rotation.x -= deltaY * 0.002;  // Vertical swipe for up/down
+        
+        // Update touch start position
+        touchStartPos = { x: touchMove.clientX, y: touchMove.clientY };
+      }
+    });
+
+    // Touch events for movement (virtual joystick)
+    document.body.addEventListener('touchstart', function(event) {
+      let touch = event.touches[0];
+      let centerX = window.innerWidth / 2;
+      let centerY = window.innerHeight / 2;
+
+      // Determine movement direction based on touch position relative to the screen center
+      if (touch.clientX < centerX) mobileMovement.left = true;
+      if (touch.clientX > centerX) mobileMovement.right = true;
+      if (touch.clientY < centerY) mobileMovement.forward = true;
+      if (touch.clientY > centerY) mobileMovement.backward = true;
+    });
+
+    document.body.addEventListener('touchend', function(event) {
+      mobileMovement.forward = false;
+      mobileMovement.backward = false;
+      mobileMovement.left = false;
+      mobileMovement.right = false;
+    });
+
+    // Animation loop
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Desktop controls movement
+      velocity.set(0, 0, 0); // Reset the velocity
+
+      if (keys.forward) velocity.z -= speed;
+      if (keys.backward) velocity.z += speed;
+      if (keys.left) velocity.x -= speed;
+      if (keys.right) velocity.x += speed;
+
+      // Mobile controls movement
+      if (mobileMovement.forward) velocity.z -= speed;
+      if (mobileMovement.backward) velocity.z += speed;
+      if (mobileMovement.left) velocity.x -= speed;
+      if (mobileMovement.right) velocity.x += speed;
+
+      // Move the camera based on velocity
+      controls.moveRight(velocity.x);
+      controls.moveForward(velocity.z);
+
+      // Update the scene
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
